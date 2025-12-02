@@ -21,4 +21,4 @@ RUN chmod 644 /opt/harness_delegate/custom-certs/*.cert && \
 RUN ls -l /opt/harness_delegate/custom-certs && \
     keytool -list -keystore /opt/java/openjdk/lib/security/cacerts -storepass changeit | head -n 20
 
-# Let the default entrypoint take over and load certs via load_certificates.sh
+# Let the default entrypoint take over and load certs via load_certificates.sh fffff
