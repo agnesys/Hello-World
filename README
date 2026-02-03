@@ -1,168 +1,18 @@
-MCP Server for Spinnaker:
-Setting up an MCP server involves creating an HTTP interface that translates standardized MCP 
-requests into Spinnaker API calls. This enables AI agents to securely and efficiently interact 
-with Spinnaker pipelines and workflows. Key tasks include mapping MCP contexts and intents to 
-Spinnaker operations, handling authentication, enforcing validation and guardrails, 
-and ensuring comprehensive logging and observability. Challenges include managing 
-Spinnaker’s API complexity, maintaining security, keeping up with evolving MCP standards, 
-and enabling effective debugging.
+1️⃣ First: clarify one key concept (very important)
 
-MCP Protocol Pros and Cons:
-The MCP protocol offers a standardized, language-agnostic way for AI agents to 
-communicate with diverse systems via intent-context modeling, facilitating flexible integrations 
-with minimal custom adapters. However, it is still an emerging standard with limited tooling and adoption, 
-which may introduce instability and extra development effort during early implementation.
+👉 Storage growth ≠ data loss (RPO)
 
+Storage growth over time → capacity planning, cost, trend analysis
 
+Data loss during regional failover → RPO (Recovery Point Objective)
 
--------------------------
-Save the above YAML into a file, e.g. delegate-configmap.yaml.
+They are related, but not the same metric.
 
-Apply it to your EKS cluster:
-  kubectl apply -f delegate-configmap.yaml
-Mount it in your delegate Deployment so that it’s available at:
-  /opt/harness-delegate/config/delegate-config.yaml
-Example snippet for Deployment (delegate pod spec):
-          volumeMounts:
-        - name: delegate-config
-          mountPath: /opt/harness-delegate/config/delegate-config.yaml
-          subPath: delegate-config.yaml
-      volumes:
-      - name: delegate-config
-        configMap:
-          name: delegate-config
+Aurora Global DB replicates asynchronously, so:
 
-----------------------
-Here are the top 5 key features Harness supports for Continuous Delivery/DevOps:
+During a region failure, you may lose data that was written but not yet replicated
 
-1. Continuous Delivery (CD) with Smart Automation
-
-  Automates deployments across Kubernetes, ECS, EKS, EC2, and other platforms.
-  Supports advanced deployment strategies like Blue/Green, Canary, and Rolling.
-
-2. Built-in CI/CD Pipelines with GitOps
-
-  Native integration for CI and CD in one platform.
-  GitOps support for managing deployments declaratively via Git repos.
-
-3. Feature Flags
-
-  Toggle features on/off without redeploying code.  
-  Enables progressive rollouts and safe experimentation.
-
-4. Cloud Cost Management (CCM)
-
-  Provides visibility into cloud spend across AWS, Azure, and GCP.
-  Suggests optimizations and governance to reduce costs.
-
-
-
-Could you please provide more details on how pipeline metadata is stored and encrypted within Harness? Specifically, we’d like to understand where the metadata is stored (e.g., Harness-managed database, GCP/AWS storage, etc.), the encryption mechanisms in place, key management practices, and where the encryption keys are stored.
-
-Does Harness support TLS 1.3 for all internal and external communications (e.g., between delegate, Harness SaaS services, and external integrations)? If yes, could you confirm whether it is enforced by default or configurable?
-
-Is there an option for customers to use customer-managed encryption keys (CMKs) for pipeline metadata encryption, instead of relying solely on Harness-managed keys? If yes, please share details on how this can be configured and managed.
-
-5. Governance, Security, and Compliance
-
-  OPA-based policy enforcement.
-  Role-based access control (RBAC) and SSO with SAML/OIDC.
-  Audit trails for all deployment and pipeline activities.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Operation Category	Tasks	Frequency	Responsibility
-Cluster Maintenance	- Monitor node health and autoscaling.
-- Apply EKS/Kubernetes version upgrades (minor every 3–6 months).
-- Patch worker node AMIs.	Monthly / Quarterly	Infra team
-
-Harness Application Lifecycle	- Monitor Harness pod health (Manager, Gateway, UI, etc.).
-- Apply SMP Helm chart upgrades.
-- Validate ingress and service routes.	Monthly / during release	Infra + DevOps
-
-Ingress / Load Balancing	- Validate ALB ingress health.
-- Rotate TLS certificates (ACM-managed).	Monthly / before expiry	Infra
-
-Config & Secret Management	- Rotate credentials (DB, Redis, S3).
-- Sync with AWS Secrets Manager or Kubernetes Secrets.	Quarterly / as per policy	Infra
-
-Database Connectivity	- Validate external DB endpoints (RDS, DocumentDB).
-- Monitor DB connection pool usage.	Weekly	Infra
-
-Backup & Restore Validation	- Ensure RDS and S3 backups are working.
-- Perform quarterly restore tests.	Monthly / Quarterly	Infra
-
-Monitoring & Logging	- Setup CloudWatch / Prometheus + Grafana dashboards.
-- Log aggregation via CloudWatch or Loki.	Continuous	Infra
-
-Security & Compliance	- IAM role and service account audits.
-- Image vulnerability scans.
-- Network policy enforcement.	Monthly	Security / Infra
-
-Cost Optimization	- Review EKS node utilization.
-- Right-size instance types.
-- Evaluate S3 storage class transitions.	Monthly	Infra / FinOps
-
-==================================================================================
-
-Operation Category	Tasks	Frequency	Responsibility
-Cluster Management	- Maintain EKS node groups for delegates.
-- Scale based on deployment workload (100 parallel deployments).	Continuous / Weekly	Infra
-
-Delegate Lifecycle	- Upgrade delegate images (align with SMP version).
-- Rotate delegate tokens and secrets.	Monthly	Infra + DevOps
-
-Networking & Outbound Access	- Validate outbound connectivity via CloudEdge or proxy.
-- Maintain least-privilege IAM roles (IRSA).	Monthly	Infra / Security
-
-Pod & Job Execution Monitoring	- Ensure delegate pods can handle concurrent pipelines.
-- Monitor pod restarts, memory, CPU saturation.	Weekly	Infra
-
-Security Controls	- Enforce namespace isolation for different projects.
-- Scan delegate base images for CVEs.	Monthly	Security / Infra
-
-Autoscaling	- Configure HPA / Cluster Autoscaler for delegate workload bursts.
-- Review CloudWatch metrics for scaling thresholds.	Continuous	Infra
-
-Resource Quota Management	- Define per-project resource quotas to prevent noisy neighbors.	Monthly	Infra
-Cost Review	- Evaluate node group sizes and spot instance usage for delegates.
-
-
-===========================================================================================
-Service	Operational Tasks	Frequency	Responsibility
-Amazon RDS (PostgreSQL)	- Monitor CPU, memory, IOPS.
-- Backup via AWS Backup.
-- Apply minor version upgrades.	Weekly / Monthly	Infra
-
-Amazon DocumentDB (MongoDB)	- Monitor replica lag and connections.
-- Apply patch versions.	Monthly	Infra
-
-Amazon ElastiCache (Redis)	- Monitor memory and eviction policies.
-- Rotate Redis auth tokens.	Weekly / Monthly	Infra
-
-Amazon S3	- Verify bucket lifecycle policies and access logs.
-- Audit IAM access.	Monthly	Infra / Security
-
-Amazon Secrets Manager	- Rotate credentials automatically.
-- Sync to Kubernetes Secrets if needed.	Monthly	Infra
-
-CloudWatch / Grafana	- Monitor logs, metrics, alerting thresholds.	Continuous	Infra
-AWS Backup	- Validate restore points and test recoveries.	Quarterly	Infra
-
-
+That loss is time-based, not size-based
 
 
 
